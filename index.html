@@ -656,10 +656,12 @@
     }
 
     function buildCurlCommand(slug) {
-      const escapedSlug = slug.replace(/'/g, "'\\''");
+      const body = JSON.stringify({
+        query: `{ user(input: { selector: { slug: ${JSON.stringify(slug)} } }) { result { _id } } }`
+      });
       return `curl -s -X POST https://www.lesswrong.com/graphql \\
   -H 'Content-Type: application/json' \\
-  -d '{"query": "{ user(input: { selector: { slug: \\"${escapedSlug}\\" } }) { result { _id } } }"}'`;
+  -d '${body.replace(/'/g, "'\\''")}'`;
     }
 
     function updateCurlCommand() {
@@ -715,6 +717,12 @@
       navigator.clipboard.writeText(buildCurlCommand(slug)).then(() => {
         copiedToast.classList.add('show');
         setTimeout(() => copiedToast.classList.remove('show'), 2000);
+      }).catch(() => {
+        const range = document.createRange();
+        range.selectNodeContents(curlCommandText);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
       });
     });
 
