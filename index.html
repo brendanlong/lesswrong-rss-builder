@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LessWrong RSS Feed Builder</title>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --surface: #16213e;
+      --surface-hover: #1a2745;
+      --border: #0f3460;
+      --accent: #e94560;
+      --accent-hover: #c73a52;
+      --text: #eee;
+      --text-muted: #a0a0b8;
+      --input-bg: #0f3460;
+      --input-border: #1a4a8a;
+      --success: #4ecca3;
+      --warning: #ffc107;
+      --code-bg: #0d1b36;
+      --link: #64b5f6;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      margin-bottom: 0.25rem;
+      color: var(--text);
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+      font-size: 0.95rem;
+    }
+
+    .subtitle a {
+      color: var(--link);
+      text-decoration: none;
+    }
+
+    .subtitle a:hover {
+      text-decoration: underline;
+    }
+
+    .form-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-section h2 {
+      font-size: 1rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+      font-weight: 600;
+    }
+
+    .form-row {
+      margin-bottom: 1rem;
+    }
+
+    .form-row:last-child {
+      margin-bottom: 0;
+    }
+
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 0.35rem;
+      color: var(--text);
+    }
+
+    label .hint {
+      font-weight: 400;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    select, input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.9rem;
+      transition: border-color 0.15s;
+    }
+
+    select:focus, input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23a0a0b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      padding-right: 2rem;
+    }
+
+    .slug-input-group {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-start;
+    }
+
+    .slug-input-group input {
+      flex: 1;
+    }
+
+    .slug-input-group button {
+      padding: 0.5rem 0.85rem;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      transition: background 0.15s;
+      height: 36px;
+    }
+
+    .slug-input-group button:hover {
+      background: var(--accent-hover);
+    }
+
+    .slug-input-group button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .slug-status {
+      font-size: 0.8rem;
+      margin-top: 0.3rem;
+      min-height: 1.2em;
+    }
+
+    .slug-status.success {
+      color: var(--success);
+    }
+
+    .slug-status.error {
+      color: var(--accent);
+    }
+
+    .slug-status.loading {
+      color: var(--text-muted);
+    }
+
+    .result-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-top: 1.5rem;
+    }
+
+    .result-box h2 {
+      font-size: 1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .url-display {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.85rem;
+      word-break: break-all;
+      margin-bottom: 0.75rem;
+      color: var(--success);
+      line-height: 1.5;
+    }
+
+    .url-display a {
+      color: var(--success);
+      text-decoration: none;
+    }
+
+    .url-display a:hover {
+      text-decoration: underline;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .actions button {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.15s;
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    .actions button:hover {
+      background: var(--surface-hover);
+      border-color: var(--accent);
+    }
+
+    .actions button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .actions button.primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .copied-toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--success);
+      color: #1a1a2e;
+      padding: 0.5rem 1.25rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.875rem;
+      opacity: 0;
+      transition: all 0.3s ease;
+      pointer-events: none;
+    }
+
+    .copied-toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .info-text {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    .param-summary {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+    }
+
+    .param-summary code {
+      color: var(--link);
+      background: var(--code-bg);
+      padding: 0.1rem 0.3rem;
+      border-radius: 3px;
+      font-size: 0.78rem;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    footer a {
+      color: var(--link);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 1.25rem 1rem;
+      }
+
+      h1 {
+        font-size: 1.4rem;
+      }
+
+      .actions {
+        flex-direction: column;
+      }
+
+      .actions button {
+        width: 100%;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>LessWrong RSS Feed Builder</h1>
+    <p class="subtitle">Build custom RSS feed URLs for <a href="https://www.lesswrong.com" target="_blank" rel="noopener">LessWrong</a></p>
+
+    <!-- Feed Type -->
+    <div class="form-section">
+      <h2>Feed Type</h2>
+      <div class="form-row">
+        <label for="feedType">What do you want in your feed?</label>
+        <select id="feedType">
+          <option value="posts">Posts</option>
+          <option value="comments">Comments</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- View / Filter -->
+    <div class="form-section">
+      <h2>View</h2>
+      <div class="form-row">
+        <label for="feedView">Feed view <span class="hint" id="viewHint"></span></label>
+        <select id="feedView"></select>
+        <p class="info-text" id="viewDescription"></p>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="form-section" id="filtersSection">
+      <h2>Filters</h2>
+
+      <div class="form-row" id="karmaRow">
+        <label for="karmaThreshold">Minimum karma threshold <span class="hint">(posts only)</span></label>
+        <select id="karmaThreshold">
+          <option value="">No minimum</option>
+          <option value="2">2+ karma</option>
+          <option value="30">30+ karma</option>
+          <option value="45">45+ karma</option>
+          <option value="75">75+ karma</option>
+          <option value="125">125+ karma</option>
+          <option value="200">200+ karma</option>
+        </select>
+        <p class="info-text">Posts appear in the feed when they reach this karma level. Values are rounded to the nearest supported threshold.</p>
+      </div>
+
+      <div class="form-row" id="userRow">
+        <label for="userSlug">Author <span class="hint">(username slug)</span></label>
+        <div class="slug-input-group">
+          <input type="text" id="userSlug" placeholder="e.g. adamzerner">
+          <button id="lookupUser" type="button">Look up</button>
+        </div>
+        <div class="slug-status" id="userStatus"></div>
+        <input type="hidden" id="userId" value="">
+      </div>
+
+      <div class="form-row" id="postIdRow">
+        <label for="postId">Post ID <span class="hint">(from post URL)</span></label>
+        <input type="text" id="postId" placeholder="e.g. dzF8vSdDtmWjCBBDr">
+        <p class="info-text">The alphanumeric ID from a LessWrong post URL, e.g. lesswrong.com/posts/<strong>dzF8vSdDtmWjCBBDr</strong>/...</p>
+      </div>
+
+      <div class="form-row" id="tagIdRow">
+        <label for="tagId">Tag ID</label>
+        <input type="text" id="tagId" placeholder="e.g. sWcuNsGSh3LKBRRGE">
+        <p class="info-text">The tag ID from a LessWrong tag URL.</p>
+      </div>
+
+      <div class="form-row" id="parentCommentIdRow">
+        <label for="parentCommentId">Parent Comment ID</label>
+        <input type="text" id="parentCommentId" placeholder="Comment ID to get replies for">
+      </div>
+
+      <div class="form-row" id="parentAnswerIdRow">
+        <label for="parentAnswerId">Parent Answer ID</label>
+        <input type="text" id="parentAnswerId" placeholder="Answer ID to get replies for">
+      </div>
+
+      <div class="form-row" id="topLevelCommentIdRow">
+        <label for="topLevelCommentId">Top-Level Comment ID</label>
+        <input type="text" id="topLevelCommentId" placeholder="Comment ID for full thread">
+      </div>
+
+      <div class="form-row" id="forumEventIdRow">
+        <label for="forumEventId">Forum Event ID</label>
+        <input type="text" id="forumEventId" placeholder="Forum event ID">
+      </div>
+
+      <div class="form-row" id="sortByRow">
+        <label for="sortBy">Sort by</label>
+        <select id="sortBy">
+          <option value="">Default</option>
+          <option value="top">Top (by karma)</option>
+          <option value="new">Newest</option>
+          <option value="old">Oldest</option>
+          <option value="magic">Magic (Wilson score)</option>
+          <option value="recentComments">Recent comments (subthread activity)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div class="result-box">
+      <h2>Your RSS Feed URL</h2>
+      <div class="url-display">
+        <a id="feedUrl" href="https://www.lesswrong.com/feed.xml" target="_blank" rel="noopener">https://www.lesswrong.com/feed.xml</a>
+      </div>
+      <div class="param-summary" id="paramSummary"></div>
+      <div class="actions">
+        <button class="primary" id="copyBtn" type="button">Copy URL</button>
+        <button id="openBtn" type="button">Open in browser</button>
+      </div>
+    </div>
+
+    <footer>
+      <p>Posts return 10 items &middot; Comments return 50 items &middot; These limits are not configurable</p>
+      <p style="margin-top: 0.5rem"><a href="https://github.com/brendanlong/lesswrong-rss-builder" target="_blank" rel="noopener">Source on GitHub</a></p>
+    </footer>
+  </div>
+
+  <div class="copied-toast" id="copiedToast">Copied to clipboard!</div>
+
+  <script>
+    // --- Data: view definitions ---
+
+    const POST_VIEWS = [
+      { value: '', label: 'Default (newest posts)', description: 'All newest posts, sorted by post date.', requires: [], optional: ['userId', 'karma'] },
+      { value: 'frontpageRss', label: 'Frontpage', description: 'Frontpage posts only, sorted by frontpage date.', requires: [], optional: ['userId', 'karma'] },
+      { value: 'curatedRss', label: 'Curated', description: 'Curated posts only, sorted by curation date.', requires: [], optional: ['karma'] },
+      { value: 'communityRss', label: 'Community', description: 'Non-frontpage posts with karma > 2.', requires: [], optional: ['userId', 'karma'] },
+      { value: 'metaRss', label: 'Meta', description: 'Meta posts only.', requires: [], optional: ['userId', 'karma'] },
+      { value: 'tagRelevance', label: 'By tag', description: 'Posts for a specific tag, sorted by tag relevance score.', requires: ['tagId'], optional: ['karma'] },
+    ];
+
+    const COMMENT_VIEWS = [
+      { value: '', label: 'Default (recent comments)', description: 'Recent comments with positive score.', requires: [], optional: ['userId'] },
+      { value: 'recentComments', label: 'Recent comments', description: 'Recent comments with positive score.', requires: [], optional: ['userId'] },
+      { value: 'allRecentComments', label: 'All recent comments', description: 'All recent comments including neutral/negative score.', requires: [], optional: ['userId'] },
+
+      // Per-post views
+      { value: 'postCommentsNew', label: 'Post comments (newest)', description: 'Comments on a specific post, newest first.', requires: ['postId'], optional: [] },
+      { value: 'postCommentsOld', label: 'Post comments (oldest)', description: 'Comments on a specific post, oldest first.', requires: ['postId'], optional: [] },
+      { value: 'postCommentsTop', label: 'Post comments (top karma)', description: 'Comments on a specific post, highest karma first.', requires: ['postId'], optional: [] },
+      { value: 'postCommentsBest', label: 'Post comments (best)', description: 'Comments on a specific post, best first.', requires: ['postId'], optional: [] },
+      { value: 'postCommentsMagic', label: 'Post comments (magic sort)', description: 'Comments on a specific post, Wilson score sort.', requires: ['postId'], optional: [] },
+      { value: 'postCommentsRecentReplies', label: 'Post comments (recent replies)', description: 'Comments on a post by recent subthread activity.', requires: ['postId'], optional: [] },
+      { value: 'postsItemComments', label: 'Post item comments', description: 'Recent non-deleted comments on a post.', requires: ['postId'], optional: [] },
+      { value: 'questionAnswers', label: 'Question answers', description: 'Answers to a question post.', requires: ['postId'], optional: ['sortBy'] },
+      { value: 'answersAndReplies', label: 'Answers and replies', description: 'Answers and their replies on a question post.', requires: ['postId'], optional: ['sortBy'] },
+      { value: 'debateResponses', label: 'Debate responses', description: 'Debate responses on a post, oldest first.', requires: ['postId'], optional: [] },
+      { value: 'recentDebateResponses', label: 'Recent debate responses', description: 'Recent debate responses on a post.', requires: ['postId'], optional: [] },
+
+      // Reply views
+      { value: 'commentReplies', label: 'Replies to a comment', description: 'Replies to a specific comment.', requires: ['parentCommentId'], optional: [] },
+      { value: 'repliesToAnswer', label: 'Replies to an answer', description: 'Replies to a specific answer.', requires: ['parentAnswerId'], optional: [] },
+      { value: 'repliesToCommentThread', label: 'Full comment thread', description: 'Full thread under a top-level comment.', requires: ['topLevelCommentId'], optional: [] },
+
+      // User views
+      { value: 'profileComments', label: 'User profile comments', description: 'Comments by a specific user.', requires: ['userId'], optional: ['sortBy'] },
+
+      // Shortform / Quick Takes
+      { value: 'shortform', label: 'Quick takes (by activity)', description: 'Top-level shortform/quick takes, sorted by recent subthread activity.', requires: [], optional: ['userId'] },
+      { value: 'topShortform', label: 'Quick takes (top score)', description: 'Top shortform by score.', requires: [], optional: ['userId'] },
+      { value: 'shortformFrontpage', label: 'Quick takes (frontpage)', description: 'Frontpage shortform, filtered by quality.', requires: [], optional: [] },
+
+      // Tag views
+      { value: 'tagDiscussionComments', label: 'Tag discussion', description: 'Discussion comments on a tag page.', requires: ['tagId'], optional: [] },
+      { value: 'tagSubforumComments', label: 'Tag subforum', description: 'Subforum comments for a tag.', requires: ['tagId'], optional: ['sortBy'] },
+
+      // Forum event
+      { value: 'forumEventComments', label: 'Forum event comments', description: 'Comments on a forum event.', requires: ['forumEventId'], optional: [] },
+
+      // Moderator
+      { value: 'moderatorComments', label: 'Moderator comments', description: 'Comments posted with a moderator hat.', requires: [], optional: [] },
+    ];
+
+    // --- All filter field IDs and which param they map to ---
+    const FILTER_FIELDS = {
+      karma: { rowId: 'karmaRow', inputId: 'karmaThreshold', param: 'karmaThreshold' },
+      userId: { rowId: 'userRow', inputId: 'userId', param: 'userId' },
+      postId: { rowId: 'postIdRow', inputId: 'postId', param: 'postId' },
+      tagId: { rowId: 'tagIdRow', inputId: 'tagId', param: 'tagId' },
+      parentCommentId: { rowId: 'parentCommentIdRow', inputId: 'parentCommentId', param: 'parentCommentId' },
+      parentAnswerId: { rowId: 'parentAnswerIdRow', inputId: 'parentAnswerId', param: 'parentAnswerId' },
+      topLevelCommentId: { rowId: 'topLevelCommentIdRow', inputId: 'topLevelCommentId', param: 'topLevelCommentId' },
+      forumEventId: { rowId: 'forumEventIdRow', inputId: 'forumEventId', param: 'forumEventId' },
+      sortBy: { rowId: 'sortByRow', inputId: 'sortBy', param: 'sortBy' },
+    };
+
+    // --- DOM references ---
+    const feedTypeEl = document.getElementById('feedType');
+    const feedViewEl = document.getElementById('feedView');
+    const viewDescEl = document.getElementById('viewDescription');
+    const viewHintEl = document.getElementById('viewHint');
+    const feedUrlEl = document.getElementById('feedUrl');
+    const paramSummaryEl = document.getElementById('paramSummary');
+    const copyBtn = document.getElementById('copyBtn');
+    const openBtn = document.getElementById('openBtn');
+    const copiedToast = document.getElementById('copiedToast');
+    const filtersSection = document.getElementById('filtersSection');
+
+    const userSlugEl = document.getElementById('userSlug');
+    const lookupUserBtn = document.getElementById('lookupUser');
+    const userStatusEl = document.getElementById('userStatus');
+    const userIdEl = document.getElementById('userId');
+
+    // --- State ---
+    let currentViews = POST_VIEWS;
+
+    // --- Functions ---
+
+    function getActiveView() {
+      const viewVal = feedViewEl.value;
+      return currentViews.find(v => v.value === viewVal) || currentViews[0];
+    }
+
+    function populateViews() {
+      const isComments = feedTypeEl.value === 'comments';
+      currentViews = isComments ? COMMENT_VIEWS : POST_VIEWS;
+      viewHintEl.textContent = isComments ? '(comment views)' : '(post views)';
+
+      feedViewEl.innerHTML = '';
+      currentViews.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.value;
+        opt.textContent = v.label;
+        feedViewEl.appendChild(opt);
+      });
+    }
+
+    function getVisibleFields(view) {
+      const fields = new Set();
+      if (view.requires) view.requires.forEach(f => fields.add(f));
+      if (view.optional) view.optional.forEach(f => fields.add(f));
+      return fields;
+    }
+
+    function updateVisibility() {
+      const view = getActiveView();
+      viewDescEl.textContent = view.description;
+
+      const visible = getVisibleFields(view);
+
+      // Show/hide each filter field
+      let anyVisible = false;
+      for (const [key, field] of Object.entries(FILTER_FIELDS)) {
+        const row = document.getElementById(field.rowId);
+        if (visible.has(key)) {
+          row.classList.remove('hidden');
+          anyVisible = true;
+        } else {
+          row.classList.add('hidden');
+          // Clear hidden field values so they don't appear in URL
+          const input = document.getElementById(field.inputId);
+          if (input.tagName === 'SELECT') {
+            input.selectedIndex = 0;
+          } else {
+            input.value = '';
+          }
+        }
+      }
+
+      // Also clear user slug display when userId is hidden
+      if (!visible.has('userId')) {
+        userSlugEl.value = '';
+        userStatusEl.textContent = '';
+        userStatusEl.className = 'slug-status';
+      }
+
+      filtersSection.classList.toggle('hidden', !anyVisible);
+      updateUrl();
+    }
+
+    function buildUrl() {
+      const base = 'https://www.lesswrong.com/feed.xml';
+      const params = new URLSearchParams();
+
+      const isComments = feedTypeEl.value === 'comments';
+      if (isComments) {
+        params.set('type', 'comments');
+      }
+
+      const viewVal = feedViewEl.value;
+      if (viewVal) {
+        params.set('view', viewVal);
+      }
+
+      const view = getActiveView();
+      const visible = getVisibleFields(view);
+
+      for (const [key, field] of Object.entries(FILTER_FIELDS)) {
+        if (!visible.has(key)) continue;
+        const val = document.getElementById(field.inputId).value.trim();
+        if (val) {
+          params.set(field.param, val);
+        }
+      }
+
+      const qs = params.toString();
+      return qs ? `${base}?${qs}` : base;
+    }
+
+    function updateUrl() {
+      const url = buildUrl();
+      feedUrlEl.href = url;
+      feedUrlEl.textContent = url;
+
+      // Build summary of active params
+      const view = getActiveView();
+      const visible = getVisibleFields(view);
+      const parts = [];
+      for (const [key, field] of Object.entries(FILTER_FIELDS)) {
+        if (!visible.has(key)) continue;
+        const val = document.getElementById(field.inputId).value.trim();
+        if (val) {
+          const escaped = val.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          parts.push(`<code>${field.param}=${escaped}</code>`);
+        }
+      }
+      if (feedTypeEl.value === 'comments') {
+        parts.unshift('<code>type=comments</code>');
+      }
+      if (feedViewEl.value) {
+        parts.unshift(`<code>view=${feedViewEl.value}</code>`);
+      }
+      paramSummaryEl.innerHTML = parts.length ? 'Parameters: ' + parts.join(' &middot; ') : '';
+    }
+
+    async function lookupUserSlug() {
+      const slug = userSlugEl.value.trim();
+      if (!slug) {
+        userStatusEl.textContent = 'Enter a username slug first.';
+        userStatusEl.className = 'slug-status error';
+        return;
+      }
+
+      userStatusEl.textContent = 'Looking up user...';
+      userStatusEl.className = 'slug-status loading';
+      lookupUserBtn.disabled = true;
+
+      try {
+        const query = `query GetUser($slug: String!) {
+          user(input: { selector: { slug: $slug } }) {
+            result { _id displayName }
+          }
+        }`;
+        const resp = await fetch('https://www.lesswrong.com/graphql', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, variables: { slug } }),
+        });
+
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+        const data = await resp.json();
+        if (data.errors) throw new Error(data.errors[0].message || 'GraphQL error');
+        const result = data?.data?.user?.result;
+
+        if (result && result._id) {
+          userIdEl.value = result._id;
+          const name = result.displayName || slug;
+          userStatusEl.textContent = `Found: ${name} (${result._id})`;
+          userStatusEl.className = 'slug-status success';
+          updateUrl();
+        } else {
+          userIdEl.value = '';
+          userStatusEl.textContent = `No user found with slug "${slug}".`;
+          userStatusEl.className = 'slug-status error';
+          updateUrl();
+        }
+      } catch (err) {
+        userStatusEl.textContent = `Lookup failed: ${err.message}`;
+        userStatusEl.className = 'slug-status error';
+      } finally {
+        lookupUserBtn.disabled = false;
+      }
+    }
+
+    function copyUrl() {
+      const url = buildUrl();
+      navigator.clipboard.writeText(url).then(() => {
+        copiedToast.classList.add('show');
+        setTimeout(() => copiedToast.classList.remove('show'), 2000);
+      }).catch(() => {
+        // Fallback: select text
+        const range = document.createRange();
+        range.selectNodeContents(feedUrlEl);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      });
+    }
+
+    function openUrl() {
+      window.open(buildUrl(), '_blank', 'noopener');
+    }
+
+    // --- Event listeners ---
+
+    feedTypeEl.addEventListener('change', () => {
+      populateViews();
+      updateVisibility();
+    });
+
+    feedViewEl.addEventListener('change', updateVisibility);
+
+    // All filter inputs trigger URL update
+    for (const field of Object.values(FILTER_FIELDS)) {
+      const el = document.getElementById(field.inputId);
+      el.addEventListener('input', updateUrl);
+      el.addEventListener('change', updateUrl);
+    }
+
+    lookupUserBtn.addEventListener('click', lookupUserSlug);
+    userSlugEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        lookupUserSlug();
+      }
+    });
+
+    copyBtn.addEventListener('click', copyUrl);
+    openBtn.addEventListener('click', openUrl);
+
+    // --- Init ---
+    populateViews();
+    updateVisibility();
+  </script>
+</body>
+</html>
