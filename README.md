@@ -157,12 +157,6 @@ curl -s -X POST https://www.lesswrong.com/graphql \
   -d '{"query": "{ user(input: { selector: { slug: \"USERNAME\" } }) { result { _id } } }"}'
 ```
 
-Or via GET:
-
-```
-https://www.lesswrong.com/graphql?query={user(input:{selector:{slug:"USERNAME"}}){result{_id}}}
-```
-
 ## License
 
 MIT
