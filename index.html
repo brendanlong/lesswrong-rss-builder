@@ -177,6 +177,17 @@
       color: var(--text-muted);
     }
 
+    .slug-status a {
+      color: var(--link);
+    }
+
+    .slug-status code {
+      background: var(--code-bg);
+      padding: 0.1rem 0.3rem;
+      border-radius: 3px;
+      font-size: 0.78rem;
+    }
+
     .result-box {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -373,13 +384,17 @@
       </div>
 
       <div class="form-row" id="userRow">
-        <label for="userSlug">Author <span class="hint">(username slug)</span></label>
-        <div class="slug-input-group">
-          <input type="text" id="userSlug" placeholder="e.g. adamzerner">
-          <button id="lookupUser" type="button">Look up</button>
+        <label for="userId">Author user ID</label>
+        <input type="text" id="userId" placeholder="e.g. 6jLdWqegNefgaabhr">
+        <p class="info-text" id="userHelp">Don't know your user ID? Enter a username below to look it up.</p>
+        <div style="margin-top: 0.5rem">
+          <label for="userSlug" style="margin-bottom: 0.25rem">Username slug <span class="hint">(for lookup only)</span></label>
+          <div class="slug-input-group">
+            <input type="text" id="userSlug" placeholder="e.g. adamzerner">
+            <button id="lookupUser" type="button">Look up</button>
+          </div>
+          <div class="slug-status" id="userStatus"></div>
         </div>
-        <div class="slug-status" id="userStatus"></div>
-        <input type="hidden" id="userId" value="">
       </div>
 
       <div class="form-row" id="postIdRow">
@@ -530,7 +545,6 @@
     const userSlugEl = document.getElementById('userSlug');
     const lookupUserBtn = document.getElementById('lookupUser');
     const userStatusEl = document.getElementById('userStatus');
-    const userIdEl = document.getElementById('userId');
 
     // --- State ---
     let currentViews = POST_VIEWS;
@@ -654,7 +668,12 @@
       paramSummaryEl.innerHTML = parts.length ? 'Parameters: ' + parts.join(' &middot; ') : '';
     }
 
-    async function lookupUserSlug() {
+    function buildGraphqlLookupUrl(slug) {
+      const query = `{user(input:{selector:{slug:${JSON.stringify(slug)}}}){result{_id displayName}}}`;
+      return `https://www.lesswrong.com/graphql?query=${encodeURIComponent(query)}`;
+    }
+
+    function lookupUserSlug() {
       const slug = userSlugEl.value.trim();
       if (!slug) {
         userStatusEl.textContent = 'Enter a username slug first.';
@@ -662,46 +681,10 @@
         return;
       }
 
-      userStatusEl.textContent = 'Looking up user...';
+      const url = buildGraphqlLookupUrl(slug);
+      userStatusEl.innerHTML = `Opening lookup in new tab. Copy the <code>_id</code> value and paste it into the user ID field above. <a href="${url}" target="_blank" rel="noopener">Click here</a> if the tab didn't open.`;
       userStatusEl.className = 'slug-status loading';
-      lookupUserBtn.disabled = true;
-
-      try {
-        const query = `query GetUser($slug: String!) {
-          user(input: { selector: { slug: $slug } }) {
-            result { _id displayName }
-          }
-        }`;
-        const resp = await fetch('https://www.lesswrong.com/graphql', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query, variables: { slug } }),
-        });
-
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
-        const data = await resp.json();
-        if (data.errors) throw new Error(data.errors[0].message || 'GraphQL error');
-        const result = data?.data?.user?.result;
-
-        if (result && result._id) {
-          userIdEl.value = result._id;
-          const name = result.displayName || slug;
-          userStatusEl.textContent = `Found: ${name} (${result._id})`;
-          userStatusEl.className = 'slug-status success';
-          updateUrl();
-        } else {
-          userIdEl.value = '';
-          userStatusEl.textContent = `No user found with slug "${slug}".`;
-          userStatusEl.className = 'slug-status error';
-          updateUrl();
-        }
-      } catch (err) {
-        userStatusEl.textContent = `Lookup failed: ${err.message}`;
-        userStatusEl.className = 'slug-status error';
-      } finally {
-        lookupUserBtn.disabled = false;
-      }
+      window.open(url, '_blank', 'noopener');
     }
 
     function copyUrl() {
