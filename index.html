@@ -335,6 +335,7 @@
         <select id="feedType">
           <option value="posts">Posts</option>
           <option value="comments">Comments</option>
+          <option value="shortform">Shortform / Quick Takes</option>
         </select>
       </div>
     </div>
@@ -443,7 +444,7 @@
     </div>
 
     <footer>
-      <p>Posts return 10 items &middot; Comments return 50 items &middot; These limits are not configurable</p>
+      <p>Posts return 10 items &middot; Comments and shortform return 50 items &middot; These limits are not configurable</p>
       <p style="margin-top: 0.5rem"><a href="https://github.com/brendanlong/lesswrong-rss-builder" target="_blank" rel="noopener">Source on GitHub</a></p>
     </footer>
   </div>
@@ -488,11 +489,6 @@
       // User views
       { value: 'profileComments', label: 'User profile comments', description: 'Comments by a specific user.', requires: ['userId'], optional: ['sortBy'] },
 
-      // Shortform / Quick Takes
-      { value: 'shortform', label: 'Quick takes (by activity)', description: 'Top-level shortform/quick takes, sorted by recent subthread activity.', requires: [], optional: ['userId'] },
-      { value: 'topShortform', label: 'Quick takes (top score)', description: 'Top shortform by score.', requires: [], optional: ['userId'] },
-      { value: 'shortformFrontpage', label: 'Quick takes (frontpage)', description: 'Frontpage shortform, filtered by quality.', requires: [], optional: [] },
-
       // Tag views
       { value: 'tagDiscussionComments', label: 'Tag discussion', description: 'Discussion comments on a tag page.', requires: ['tagId'], optional: [] },
       { value: 'tagSubforumComments', label: 'Tag subforum', description: 'Subforum comments for a tag.', requires: ['tagId'], optional: ['sortBy'] },
@@ -502,6 +498,12 @@
 
       // Moderator
       { value: 'moderatorComments', label: 'Moderator comments', description: 'Comments posted with a moderator hat.', requires: [], optional: [] },
+    ];
+
+    const SHORTFORM_VIEWS = [
+      { value: 'shortform', label: 'By activity', description: 'Top-level shortform/quick takes, sorted by recent subthread activity.', requires: [], optional: ['userId'] },
+      { value: 'topShortform', label: 'Top score', description: 'Top shortform by score.', requires: [], optional: ['userId'] },
+      { value: 'shortformFrontpage', label: 'Frontpage', description: 'Frontpage shortform, filtered by quality.', requires: [], optional: [] },
     ];
 
     // --- All filter field IDs and which param they map to ---
@@ -545,9 +547,17 @@
     }
 
     function populateViews() {
-      const isComments = feedTypeEl.value === 'comments';
-      currentViews = isComments ? COMMENT_VIEWS : POST_VIEWS;
-      viewHintEl.textContent = isComments ? '(comment views)' : '(post views)';
+      const type = feedTypeEl.value;
+      if (type === 'shortform') {
+        currentViews = SHORTFORM_VIEWS;
+        viewHintEl.textContent = '(shortform views)';
+      } else if (type === 'comments') {
+        currentViews = COMMENT_VIEWS;
+        viewHintEl.textContent = '(comment views)';
+      } else {
+        currentViews = POST_VIEWS;
+        viewHintEl.textContent = '(post views)';
+      }
 
       feedViewEl.innerHTML = '';
       currentViews.forEach(v => {
@@ -604,8 +614,8 @@
       const base = 'https://www.lesswrong.com/feed.xml';
       const params = new URLSearchParams();
 
-      const isComments = feedTypeEl.value === 'comments';
-      if (isComments) {
+      const type = feedTypeEl.value;
+      if (type === 'comments' || type === 'shortform') {
         params.set('type', 'comments');
       }
 
@@ -646,7 +656,7 @@
           parts.push(`<code>${field.param}=${escaped}</code>`);
         }
       }
-      if (feedTypeEl.value === 'comments') {
+      if (feedTypeEl.value === 'comments' || feedTypeEl.value === 'shortform') {
         parts.unshift('<code>type=comments</code>');
       }
       if (feedViewEl.value) {
