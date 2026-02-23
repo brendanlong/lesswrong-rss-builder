@@ -641,7 +641,8 @@
         if (!visible.has(key)) continue;
         const val = document.getElementById(field.inputId).value.trim();
         if (val) {
-          parts.push(`<code>${field.param}=${val}</code>`);
+          const escaped = val.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          parts.push(`<code>${field.param}=${escaped}</code>`);
         }
       }
       if (feedTypeEl.value === 'comments') {
@@ -666,16 +667,21 @@
       lookupUserBtn.disabled = true;
 
       try {
-        const query = `query { user(input: { selector: { slug: ${JSON.stringify(slug)} } }) { result { _id displayName } } }`;
+        const query = `query GetUser($slug: String!) {
+          user(input: { selector: { slug: $slug } }) {
+            result { _id displayName }
+          }
+        }`;
         const resp = await fetch('https://www.lesswrong.com/graphql', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query }),
+          body: JSON.stringify({ query, variables: { slug } }),
         });
 
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
         const data = await resp.json();
+        if (data.errors) throw new Error(data.errors[0].message || 'GraphQL error');
         const result = data?.data?.user?.result;
 
         if (result && result._id) {
