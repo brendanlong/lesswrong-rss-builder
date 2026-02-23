@@ -127,65 +127,49 @@
       padding-right: 2rem;
     }
 
-    .slug-input-group {
-      display: flex;
-      gap: 0.5rem;
-      align-items: flex-start;
-    }
-
-    .slug-input-group input {
-      flex: 1;
-    }
-
-    .slug-input-group button {
-      padding: 0.5rem 0.85rem;
-      background: var(--accent);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      white-space: nowrap;
-      transition: background 0.15s;
-      height: 36px;
-    }
-
-    .slug-input-group button:hover {
-      background: var(--accent-hover);
-    }
-
-    .slug-input-group button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .slug-status {
-      font-size: 0.8rem;
-      margin-top: 0.3rem;
-      min-height: 1.2em;
-    }
-
-    .slug-status.success {
-      color: var(--success);
-    }
-
-    .slug-status.error {
-      color: var(--accent);
-    }
-
-    .slug-status.loading {
-      color: var(--text-muted);
-    }
-
-    .slug-status a {
-      color: var(--link);
-    }
-
-    .slug-status code {
+    .curl-command {
+      margin-top: 0.5rem;
       background: var(--code-bg);
-      padding: 0.1rem 0.3rem;
-      border-radius: 3px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .curl-command-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.4rem 0.75rem;
       font-size: 0.78rem;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .curl-command-header button {
+      padding: 0.2rem 0.6rem;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      transition: all 0.15s;
+    }
+
+    .curl-command-header button:hover {
+      background: var(--surface-hover);
+      border-color: var(--accent);
+    }
+
+    .curl-command pre {
+      padding: 0.6rem 0.75rem;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.78rem;
+      color: var(--success);
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin: 0;
+      line-height: 1.5;
     }
 
     .result-box {
@@ -386,14 +370,17 @@
       <div class="form-row" id="userRow">
         <label for="userId">Author user ID</label>
         <input type="text" id="userId" placeholder="e.g. 6jLdWqegNefgaabhr">
-        <p class="info-text" id="userHelp">Don't know your user ID? Enter a username below to look it up.</p>
+        <p class="info-text" id="userHelp">Don't know your user ID? Enter a username below and run the curl command to look it up.</p>
         <div style="margin-top: 0.5rem">
           <label for="userSlug" style="margin-bottom: 0.25rem">Username slug <span class="hint">(for lookup only)</span></label>
-          <div class="slug-input-group">
-            <input type="text" id="userSlug" placeholder="e.g. adamzerner">
-            <button id="lookupUser" type="button">Look up</button>
+          <input type="text" id="userSlug" placeholder="e.g. adamzerner">
+          <div class="curl-command hidden" id="curlCommandBox">
+            <div class="curl-command-header">
+              <span>Run this in your terminal to get the user ID:</span>
+              <button id="copyCurl" type="button">Copy</button>
+            </div>
+            <pre id="curlCommandText"></pre>
           </div>
-          <div class="slug-status" id="userStatus"></div>
         </div>
       </div>
 
@@ -543,8 +530,9 @@
     const filtersSection = document.getElementById('filtersSection');
 
     const userSlugEl = document.getElementById('userSlug');
-    const lookupUserBtn = document.getElementById('lookupUser');
-    const userStatusEl = document.getElementById('userStatus');
+    const curlCommandBox = document.getElementById('curlCommandBox');
+    const curlCommandText = document.getElementById('curlCommandText');
+    const copyCurlBtn = document.getElementById('copyCurl');
 
     // --- State ---
     let currentViews = POST_VIEWS;
@@ -605,8 +593,7 @@
       // Also clear user slug display when userId is hidden
       if (!visible.has('userId')) {
         userSlugEl.value = '';
-        userStatusEl.textContent = '';
-        userStatusEl.className = 'slug-status';
+        curlCommandBox.classList.add('hidden');
       }
 
       filtersSection.classList.toggle('hidden', !anyVisible);
@@ -668,23 +655,21 @@
       paramSummaryEl.innerHTML = parts.length ? 'Parameters: ' + parts.join(' &middot; ') : '';
     }
 
-    function buildGraphqlLookupUrl(slug) {
-      const query = `{user(input:{selector:{slug:${JSON.stringify(slug)}}}){result{_id displayName}}}`;
-      return `https://www.lesswrong.com/graphql?query=${encodeURIComponent(query)}`;
+    function buildCurlCommand(slug) {
+      const escapedSlug = slug.replace(/'/g, "'\\''");
+      return `curl -s -X POST https://www.lesswrong.com/graphql \\
+  -H 'Content-Type: application/json' \\
+  -d '{"query": "{ user(input: { selector: { slug: \\"${escapedSlug}\\" } }) { result { _id } } }"}'`;
     }
 
-    function lookupUserSlug() {
+    function updateCurlCommand() {
       const slug = userSlugEl.value.trim();
-      if (!slug) {
-        userStatusEl.textContent = 'Enter a username slug first.';
-        userStatusEl.className = 'slug-status error';
-        return;
+      if (slug) {
+        curlCommandText.textContent = buildCurlCommand(slug);
+        curlCommandBox.classList.remove('hidden');
+      } else {
+        curlCommandBox.classList.add('hidden');
       }
-
-      const url = buildGraphqlLookupUrl(slug);
-      userStatusEl.innerHTML = `Opening lookup in new tab. Copy the <code>_id</code> value and paste it into the user ID field above. <a href="${url}" target="_blank" rel="noopener">Click here</a> if the tab didn't open.`;
-      userStatusEl.className = 'slug-status loading';
-      window.open(url, '_blank', 'noopener');
     }
 
     function copyUrl() {
@@ -722,12 +707,15 @@
       el.addEventListener('change', updateUrl);
     }
 
-    lookupUserBtn.addEventListener('click', lookupUserSlug);
-    userSlugEl.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        lookupUserSlug();
-      }
+    userSlugEl.addEventListener('input', updateCurlCommand);
+
+    copyCurlBtn.addEventListener('click', () => {
+      const slug = userSlugEl.value.trim();
+      if (!slug) return;
+      navigator.clipboard.writeText(buildCurlCommand(slug)).then(() => {
+        copiedToast.classList.add('show');
+        setTimeout(() => copiedToast.classList.remove('show'), 2000);
+      });
     });
 
     copyBtn.addEventListener('click', copyUrl);
