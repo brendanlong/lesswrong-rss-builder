@@ -336,6 +336,86 @@
       text-decoration: underline;
     }
 
+    .preview-section {
+      margin-top: 1rem;
+    }
+
+    .preview-section.hidden {
+      display: none !important;
+    }
+
+    .preview-loading {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 1rem 0;
+    }
+
+    .preview-loading .spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 0.5rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .preview-error {
+      color: var(--accent);
+      font-size: 0.85rem;
+      padding: 0.75rem 0;
+    }
+
+    .preview-entries {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .preview-entry {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+    }
+
+    .preview-entry-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .preview-entry-title a {
+      color: var(--link);
+      text-decoration: none;
+    }
+
+    .preview-entry-title a:hover {
+      text-decoration: underline;
+    }
+
+    .preview-entry-meta {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+    }
+
+    .preview-entry-snippet {
+      font-size: 0.82rem;
+      color: var(--text);
+      line-height: 1.5;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+    }
+
     @media (max-width: 600px) {
       .container {
         padding: 1.25rem 1rem;
@@ -474,7 +554,9 @@
       <div class="actions">
         <button class="primary" id="copyBtn" type="button">Copy URL</button>
         <button id="openBtn" type="button">Open in browser</button>
+        <button id="previewBtn" type="button">Preview feed</button>
       </div>
+      <div class="preview-section hidden" id="previewSection"></div>
     </div>
 
     <!-- Audio feeds -->
@@ -574,6 +656,9 @@
     const openBtn = document.getElementById('openBtn');
     const copiedToast = document.getElementById('copiedToast');
     const filtersSection = document.getElementById('filtersSection');
+
+    const previewBtn = document.getElementById('previewBtn');
+    const previewSection = document.getElementById('previewSection');
 
     const userSlugEl = document.getElementById('userSlug');
     const curlCommandBox = document.getElementById('curlCommandBox');
@@ -688,6 +773,10 @@
       feedUrlEl.href = url;
       feedUrlEl.textContent = url;
 
+      // Hide stale preview when URL changes
+      previewSection.classList.add('hidden');
+      previewSection.innerHTML = '';
+
       // Build summary of active params
       const view = getActiveView();
       const visible = getVisibleFields(view);
@@ -747,6 +836,87 @@
       window.open(buildUrl(), '_blank', 'noopener');
     }
 
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function stripHtml(html) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      return tmp.textContent || tmp.innerText || '';
+    }
+
+    async function previewFeed() {
+      const url = buildUrl();
+      previewSection.classList.remove('hidden');
+      previewSection.innerHTML = '<div class="preview-loading"><span class="spinner"></span> Fetching feed...</div>';
+
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) {
+          throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+        }
+
+        const text = await resp.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'application/xml');
+
+        const parseError = doc.querySelector('parsererror');
+        if (parseError) {
+          throw new Error('Failed to parse feed XML.');
+        }
+
+        const items = doc.querySelectorAll('item');
+        if (items.length === 0) {
+          previewSection.innerHTML = '<div class="preview-error">No items found in this feed.</div>';
+          return;
+        }
+
+        const count = Math.min(items.length, 5);
+        let html = `<div class="preview-entries">`;
+
+        for (let i = 0; i < count; i++) {
+          const item = items[i];
+          const title = item.querySelector('title')?.textContent || 'Untitled';
+          const link = item.querySelector('link')?.textContent || '';
+          const author = item.querySelector('dc\\:creator, creator')?.textContent || '';
+          const description = item.querySelector('description')?.textContent || '';
+          const snippet = stripHtml(description).trim();
+          const truncated = snippet.length > 300 ? snippet.slice(0, 300) + '...' : snippet;
+
+          html += `<div class="preview-entry">`;
+          html += `<div class="preview-entry-title">`;
+          if (link) {
+            html += `<a href="${escapeHtml(link)}" target="_blank" rel="noopener">${escapeHtml(title)}</a>`;
+          } else {
+            html += escapeHtml(title);
+          }
+          html += `</div>`;
+          if (author) {
+            html += `<div class="preview-entry-meta">by ${escapeHtml(author)}</div>`;
+          }
+          if (truncated) {
+            html += `<div class="preview-entry-snippet">${escapeHtml(truncated)}</div>`;
+          }
+          html += `</div>`;
+        }
+
+        if (items.length > 5) {
+          html += `<div style="font-size: 0.8rem; color: var(--text-muted); text-align: center;">Showing 5 of ${items.length} items</div>`;
+        }
+
+        html += `</div>`;
+        previewSection.innerHTML = html;
+      } catch (err) {
+        const isCors = err instanceof TypeError && err.message === 'Failed to fetch';
+        if (isCors) {
+          previewSection.innerHTML = '<div class="preview-error">Preview unavailable: the LessWrong server does not allow cross-origin requests from this page. Use "Open in browser" to view the feed directly.</div>';
+        } else {
+          previewSection.innerHTML = `<div class="preview-error">Error loading feed: ${escapeHtml(err.message)}</div>`;
+        }
+      }
+    }
+
     // --- Event listeners ---
 
     feedTypeEl.addEventListener('change', () => {
@@ -782,6 +952,7 @@
 
     copyBtn.addEventListener('click', copyUrl);
     openBtn.addEventListener('click', openUrl);
+    previewBtn.addEventListener('click', previewFeed);
 
     // --- Init ---
     populateViews();
