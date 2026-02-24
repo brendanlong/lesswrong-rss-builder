@@ -284,6 +284,44 @@
       font-size: 0.78rem;
     }
 
+    .also-section {
+      margin-top: 2rem;
+      padding: 1.25rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .also-section h2 {
+      font-size: 1rem;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+
+    .also-section p {
+      margin-bottom: 0.5rem;
+    }
+
+    .also-section ul {
+      margin: 0;
+      padding-left: 1.25rem;
+    }
+
+    .also-section li {
+      margin-bottom: 0.25rem;
+    }
+
+    .also-section a {
+      color: var(--link);
+      text-decoration: none;
+    }
+
+    .also-section a:hover {
+      text-decoration: underline;
+    }
+
     footer {
       text-align: center;
       margin-top: 3rem;
@@ -441,6 +479,16 @@
         <button class="primary" id="copyBtn" type="button">Copy URL</button>
         <button id="openBtn" type="button">Open in browser</button>
       </div>
+    </div>
+
+    <!-- Audio feeds -->
+    <div class="also-section">
+      <h2>You might also be interested in</h2>
+      <p>These podcast feeds provide audio narrations of LessWrong posts:</p>
+      <ul>
+        <li><a href="https://feeds.type3.audio/lesswrong--30-karma.rss" target="_blank" rel="noopener">LessWrong 30+ karma posts (audio)</a></li>
+        <li><a href="https://rss.buzzsprout.com/2037297.rss" target="_blank" rel="noopener">LessWrong curated and 125+ karma posts (audio)</a></li>
+      </ul>
     </div>
 
     <footer>
