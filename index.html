@@ -284,6 +284,26 @@
       font-size: 0.78rem;
     }
 
+    .unsupported-warning {
+      margin-top: 0.75rem;
+      padding: 0.65rem 0.85rem;
+      background: rgba(255, 193, 7, 0.1);
+      border: 1px solid var(--warning);
+      border-radius: 6px;
+      font-size: 0.82rem;
+      color: var(--warning);
+      line-height: 1.5;
+    }
+
+    .unsupported-warning a {
+      color: var(--warning);
+      text-decoration: underline;
+    }
+
+    .unsupported-warning a:hover {
+      opacity: 0.85;
+    }
+
     .also-section {
       margin-top: 2rem;
       font-size: 0.85rem;
@@ -471,6 +491,10 @@
         <a id="feedUrl" href="https://www.lesswrong.com/feed.xml" target="_blank" rel="noopener">https://www.lesswrong.com/feed.xml</a>
       </div>
       <div class="param-summary" id="paramSummary"></div>
+      <div class="unsupported-warning hidden" id="unsupportedWarning">
+        These options are not officially supported by LessWrong and may break in the future.
+        <a href="https://www.lesswrong.com/posts/dzF8vSdDtmWjCBBDr/secrets-of-the-lesswrong-rss-feed?commentId=8iGJ9thpNg6kuokcu" target="_blank" rel="noopener">See this comment for details.</a>
+      </div>
       <div class="actions">
         <button class="primary" id="copyBtn" type="button">Copy URL</button>
         <button id="openBtn" type="button">Open in browser</button>
@@ -575,6 +599,7 @@
     const copiedToast = document.getElementById('copiedToast');
     const filtersSection = document.getElementById('filtersSection');
 
+    const unsupportedWarningEl = document.getElementById('unsupportedWarning');
     const userSlugEl = document.getElementById('userSlug');
     const curlCommandBox = document.getElementById('curlCommandBox');
     const curlCommandText = document.getElementById('curlCommandText');
@@ -654,6 +679,24 @@
       updateUrl();
     }
 
+    const SUPPORTED_VIEWS = new Set(['', 'frontpageRss', 'curatedRss']);
+
+    function isUnsupported() {
+      if (feedTypeEl.value !== 'posts') return true;
+      if (!SUPPORTED_VIEWS.has(feedViewEl.value)) return true;
+
+      const view = getActiveView();
+      const visible = getVisibleFields(view);
+      for (const [key, field] of Object.entries(FILTER_FIELDS)) {
+        if (key === 'karma') continue;
+        if (!visible.has(key)) continue;
+        const val = document.getElementById(field.inputId).value.trim();
+        if (val) return true;
+      }
+
+      return false;
+    }
+
     function buildUrl() {
       const base = 'https://www.lesswrong.com/feed.xml';
       const params = new URLSearchParams();
@@ -707,6 +750,7 @@
         parts.unshift(`<code>view=${feedViewEl.value}</code>`);
       }
       paramSummaryEl.innerHTML = parts.length ? 'Parameters: ' + parts.join(' &middot; ') : '';
+      unsupportedWarningEl.classList.toggle('hidden', !isUnsupported());
     }
 
     function buildCurlCommand(slug) {
