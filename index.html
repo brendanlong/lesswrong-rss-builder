@@ -63,11 +63,14 @@
       text-decoration: underline;
     }
 
-    .form-section {
+    .card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 1.25rem;
+    }
+
+    .form-section {
       margin-bottom: 1rem;
     }
 
@@ -173,10 +176,6 @@
     }
 
     .result-box {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.25rem;
       margin-top: 1.5rem;
     }
 
@@ -286,10 +285,6 @@
 
     .also-section {
       margin-top: 2rem;
-      padding: 1.25rem;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
       font-size: 0.85rem;
       color: var(--text-muted);
     }
@@ -366,7 +361,7 @@
     <p class="subtitle">Build custom RSS feed URLs for <a href="https://www.lesswrong.com" target="_blank" rel="noopener">LessWrong</a></p>
 
     <!-- Feed Type -->
-    <div class="form-section">
+    <div class="card form-section">
       <h2>Feed Type</h2>
       <div class="form-row">
         <label for="feedType">What do you want in your feed?</label>
@@ -379,7 +374,7 @@
     </div>
 
     <!-- View / Filter -->
-    <div class="form-section">
+    <div class="card form-section">
       <h2>View</h2>
       <div class="form-row">
         <label for="feedView">Feed view <span class="hint" id="viewHint"></span></label>
@@ -389,7 +384,7 @@
     </div>
 
     <!-- Filters -->
-    <div class="form-section" id="filtersSection">
+    <div class="card form-section" id="filtersSection">
       <h2>Filters</h2>
 
       <div class="form-row" id="karmaRow">
@@ -469,7 +464,7 @@
     </div>
 
     <!-- Result -->
-    <div class="result-box">
+    <div class="card result-box">
       <h2>Your RSS Feed URL</h2>
       <div class="url-display">
         <a id="feedUrl" href="https://www.lesswrong.com/feed.xml" target="_blank" rel="noopener">https://www.lesswrong.com/feed.xml</a>
@@ -482,7 +477,7 @@
     </div>
 
     <!-- Audio feeds -->
-    <section class="also-section">
+    <section class="card also-section">
       <h2>You might also be interested in</h2>
       <p>These podcast feeds provide audio narrations of LessWrong posts:</p>
       <ul>
